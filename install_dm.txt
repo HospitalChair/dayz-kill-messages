@@ -1,0 +1,65 @@
+dayz_server/init/server_functions.sqf
+	add 
+	fnc_plyrHit   = compile preprocessFileLineNumbers "\z\addons\dayz_server\compile\fnc_plyrHit.sqf";
+	
+dayz_server/compiles/server_playerdied.sqf
+
+right below _playerName = 	name _newObject;
+add this
+
+//---------------------------------------- DEATH MESSAGES --------------------------------------------
+_victim removeAllEventHandlers "MPHit";
+
+_victim = _this select 2;
+_victimName = _playerName;
+
+_killer = _victim getVariable["AttackedBy", "nil"];
+_killerName = _victim getVariable["AttackedByName", "nil"];
+
+// when a zombie kills a player _killer, _killerName and _weapon will be "nil"
+// we can use this to determine a zombie kill and send a customized message for that. right now no killmsg means it was a zombie.
+if (_killerName != "nil") then
+{
+	_weapon = _victim getVariable["AttackedByWeapon", "nil"];
+	_distance = _victim getVariable["AttackedFromDistance", "nil"];
+
+
+ 	_loc_message = format["PKILL: %1 (%5) was killed by %2 (%6) with weapon %3 from %4m", _victimName, _killerName, _weapon, _distance, _playerID,         _killerPlayerID];
+	diag_log _loc_message;
+	death_message = format["%1 killed %2\nWeapon: %3\nDistance: %4",_killername,_victim,_weapon,_distance];
+	// show death_message locally
+	5 cutRsc ["dm_disp","PLAIN"];
+	((uiNamespace getVariable "dm_control") displayCtrl 1) ctrlSetText death_message;
+	//show deathmessage globally
+	publicVariable "death_message";
+
+	_victim setVariable["Killedby", _killername, true];
+	_victim setVariable["Killedwith", _weapon, true];
+	_victim setVariable["KilledDistance", _distance, true];
+	
+	// Cleanup
+	_victim setVariable["AttackedBy", "nil", true];
+	_victim setVariable["AttackedByName", "nil", true];
+	_victim setVariable["AttackedByWeapon", "nil", true];
+	_victim setVariable["AttackedFromDistance", "nil", true];
+    
+};
+// -----------------------------------------------------------------------------------------------------------
+
+mpmission/init.sqf
+add this to the bottom of your init.sqf file
+if (!isServer) then {
+	_mphit = player addMPEventHandler ["MPHit", {_this spawn fnc_plyrHit;}];
+	"death_message" addPublicVariableEventHandler {
+		5 cutRsc ["dm_disp","PLAIN"];
+		((uiNamespace getVariable "dm_control") displayCtrl 1) ctrlSetText death_message;
+		};
+};
+
+
+mpmission/description.ext
+add this 
+#include "dm_display.hpp"
+
+Copy dm_display.hpp file to your mpmission folder. If you put it in a subfolder then change the path in 
+the #include line
